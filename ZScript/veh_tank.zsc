@@ -4,7 +4,6 @@ class VoxelTankGun : VehPart
 	Default
 	{
 		Scale 3.0;
-		
 	}
 
 	override void UpdatePos(bool moving)
@@ -15,11 +14,12 @@ class VoxelTankGun : VehPart
 		
 		double turnspd = 0.035;
 		
-		double nangle = VehMath.LerpAngle(angle, driver.angle + 90, turnspd);
+		double nangle = VehMath.LerpAngle(angle, driver.angle + 180, turnspd);
 		double npitch = VehMath.Lerp(pitch, -driver.pitch, turnspd);
 		
 		A_SetAngle(nangle, SPF_INTERPOLATE);
 		A_SetPitch(npitch, SPF_INTERPOLATE);
+		pitch = clamp(pitch, -10, 20);
 	}
 
 	override void DoUpdate(PlayerPawn driver, UserCmd cmds)
@@ -29,7 +29,7 @@ class VoxelTankGun : VehPart
 		
 		if( (btns & BT_ATTACK) && !cooldown )
 		{
-			VehMath.FireProjectile("Rocket", pos, angle - 90, pitch, 0, 70, 10, 2, 16);
+			VehMath.FireProjectile("Rocket", pos, angle - 180, -pitch, 0, 70, 3, 2, 16);
 			cooldown = 35;
 		}
 	}
@@ -37,7 +37,7 @@ class VoxelTankGun : VehPart
 	States
 	{
 		Spawn:
-			TANK B 1;
+			TANK C 1;
 		loop;
 	}
 }

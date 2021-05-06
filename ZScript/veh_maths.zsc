@@ -9,6 +9,23 @@ class VehMath abstract
 				 leftright * cos(fromangle) + forward * sin(fromangle) )*distance;
 	}
 	
+	// 3D Vector offset, thanks Comet!
+	static vector3 V3Offset(double fromangle, double frompitch, double forward, double leftright, double updown, double distance)
+    {
+		double cosa = cos(fromangle), sina = sin(fromangle); 
+		double cosp = cos(frompitch), sinp = sin(frompitch);
+		leftright *= -1;
+		
+		vector3 vec;
+		vec.x = forward * cosa * cosp - leftright * sina + updown * cosa * sinp;
+		vec.y = forward * sina * cosp + leftright * cosa + updown * sina * sinp;
+		vec.z = -forward * sinp + updown * cosp;
+		vec *= distance;
+		
+		return vec;
+    }
+	
+	
 	// Linear interpolate
 	static double Lerp(double a, double b, double lerpFactor)
 	{
@@ -53,8 +70,7 @@ class VehMath abstract
 	play static Actor FireProjectile(class<Actor> proj, vector3 pos, double angle, double pitch, double leftright, double forwardback, double updown, double distance, double speed)
 	{
 		vector3 finalpos;
-		finalpos.xy = VOffset(angle, forwardback, leftright, distance);
-		finalpos.z = updown;
+		finalpos = V3Offset(angle, pitch, forwardback, leftright, updown, distance);
 		finalpos = level.vec3offset(pos, finalpos);
 		let proj = Actor.Spawn(proj, finalpos);
 		if(proj)
