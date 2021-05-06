@@ -85,7 +85,7 @@ class VehPart : Actor
 		
 		return vpt;
 	}
-	
+		
 	virtual vector3 GetOffsetPos(Actor from, vector3 posdiff = (0,0,0))
 	{
 		vector3 finalpos;
@@ -110,16 +110,25 @@ class VehPart : Actor
 		if(base) return base.CheckButtons(btns, bstate);
 		return false;
 	}
-		
+	
+	void AnimatePos(double forward, double leftright, double updown)
+	{
+		anim_posoffs = (forward, leftright, updown);
+	}
+	void AnimateAngles(double oangle, double opitch)
+	{
+		anim_angoffs = (oangle, opitch);
+	}
+	
 	// Templates
-	virtual void DoUpdate() {}
+	virtual void DoUpdate(VehCamera cam) {}
 	virtual void OnAttach() {}
 	
 	override void Tick()
 	{
 		super.Tick();
 		if(!base) Destroy();
-		if(base.driver) DoUpdate();
+		if(base.driver) DoUpdate(base.viewcam);
 		if(!anim_spd) anim_spd = 0.97; 
 		anim_angoffs *= anim_spd;
 		anim_posoffs *= anim_spd;
@@ -154,8 +163,7 @@ class VehBase : Actor
 	
 	PlayerPawn driver;
 	VehCamera viewcam;
-	VehVisualFXHost camfx;
-	
+
 	Default
 	{
 		+VehBase.ALIGNTOPLANE;
@@ -192,14 +200,7 @@ class VehBase : Actor
 	virtual void ReadyDriver()
 	{
 		if(!driver) return;
-		if(!viewcam) 
-		{
-			console.printf("Warning: No camera attached to vehicle!");
-		}
-		else
-		{
-			camfx = VehVisualFXHost.Setup(driver, viewcam);
-		}
+		if(!viewcam) console.printf("Warning: No camera attached to vehicle!");
 		Veh_NoWeapon.Setup(driver, self);
 	}
 	
@@ -290,6 +291,16 @@ class VehBase : Actor
 
 class VehCamera : VehPart 
 {
+	// Zoom
+	double desired_zoom;
+	double zoom_interp;
+	
+	// Quake
+	vector3 quake_desiredI;
+	double quakeperc;
+	double quakefric;
+	bool quakedown;
+
 	double default_fov;
 	vector3 relposoffs;
 	override void UpdatePos(bool moving)
@@ -300,39 +311,6 @@ class VehCamera : VehPart
 		
 		A_SetAngle(base.driver.angle, SPF_INTERPOLATE);
 		A_SetPitch(base.driver.pitch, SPF_INTERPOLATE);
-	}
-}
-
-// Visual effects system
-class VehVisualFXHost : Inventory
-{
-	// Camera
-	VehCamera cam;
-	
-	// Zoom
-	double desired_zoom;
-	double zoom_interp;
-	
-	// Quake
-	vector3 quake_desiredI;
-	double quakeperc;
-	double quakefric;
-	bool quakedown;
-	
-	Default
-	{	
-		Inventory.MaxAmount 1;
-		+NOINTERACTION;
-		+Inventory.UNTOSSABLE;
-		+Inventory.UNDROPPABLE;
-	}
-	
-	static VehVisualFXHost Setup(PlayerPawn to, VehCamera cam)
-	{
-		to.GiveInventoryType("VehVisualFXHost");
-		let fxhost = VehVisualFXHost(to.FindInventory("VehVisualFXHost"));
-		if(fxhost) fxhost.cam = cam;
-		return fxhost;
 	}
 	
 	void SetZoom(double desired, double interpolation = 1.0)
@@ -347,22 +325,17 @@ class VehVisualFXHost : Inventory
 		quakefric = spd;
 	}
 	
-	override void DoEffect()
+	override void Tick()
 	{
-		if(!cam) 
-		{
-			Owner.RemoveInventory(self);
-			GoAwayAndDie();
-			return;
-		}
+		super.Tick();
 		
 		if(!desired_zoom) desired_zoom = 1.0;
 		if(!zoom_interp) zoom_interp = 1.0;
 		
 		// Do zoom effects.
-		if(abs(cam.CameraFOV-desired_zoom) >= 0.001)
+		if(abs(CameraFOV-desired_zoom) >= 0.001)
 		{
-			cam.CameraFOV = VehMath.Lerp(cam.CameraFOV, cam.default_fov / desired_zoom, zoom_interp);
+			CameraFOV = VehMath.Lerp(CameraFOV, default_fov / desired_zoom, zoom_interp);
 		}
 		
 		// Do quake effects
@@ -380,7 +353,7 @@ class VehVisualFXHost : Inventory
 				if(quakeperc <= 0) 
 				{
 					quake_desiredI *= 0;
-					cam.relposoffs *= 0;
+					relposoffs *= 0;
 					quakedown = false;
 					quakeperc = 0;
 				}
@@ -390,9 +363,7 @@ class VehVisualFXHost : Inventory
 			vector3 quakeoffs = ( frandom(-q.y, q.y),
 								  frandom(-q.x, q.x),
 								  frandom(-q.z, q.z) );			
-			cam.relposoffs += quakeoffs;
+			relposoffs += quakeoffs;
 		}
-		
-		super.DoEffect();
 	}
 }

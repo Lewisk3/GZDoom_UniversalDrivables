@@ -27,11 +27,11 @@ class VoxelTankBarrel : VehPart
 		
 	}
 	
-	override void DoUpdate()
+	override void DoUpdate(VehCamera cam)
 	{
 		if(cooldown_primary) 
 		{
-			base.camfx.SetZoom(1.0, 0.1);
+			cam.SetZoom(1.0, 0.1);
 			cooldown_primary--;
 		}
 		if(cooldown_secondary) cooldown_secondary--;
@@ -42,13 +42,12 @@ class VoxelTankBarrel : VehPart
 			VehMath.FireProjectile("Rocket", pos, angle + 180, -pitch, 0, 70, 0, 2, 16);
 			A_StartSound("Tank/fire", CHAN_BODY, CHANF_OVERLAP);
 			cooldown_primary = 35;
-			base.camfx.SetZoom(0.96, 0.1);
-			base.camfx.Quake(0,4.0,0,0.3);
-			anim_posoffs.x = 30;
-			pitch += 5;
+			cam.SetZoom(0.90, 0.1);
+			AnimatePos(40, 0, 0);
+			AnimateAngles(0, -8);
 		}
 		
-		/* if( CheckButtons(BT_ALTATTACK, VehButtons.BTS_DOWN) && !cooldown_secondary )
+		if( CheckButtons(BT_ALTATTACK, VehButtons.BTS_DOWN) && !cooldown_secondary )
 		{
 			double rmax = 1.5;
 			double arecoil = frandom(-rmax, rmax);
@@ -56,10 +55,8 @@ class VoxelTankBarrel : VehPart
 			VehMath.FireProjectile("HaloRifle_Bullet", pos, angle + 180 + arecoil, -pitch + precoil, 20, 40, 6, 1, 200);
 			A_StartSound("Halo/Weapons/Rifle/Fire", CHAN_BODY, CHANF_OVERLAP);
 			cooldown_secondary = 4;
-			base.camfx.Quake(2,2,0,0.5);
+			cam.Quake(2,2,0,0.5);
 		}
-		*/
-		
 	}
 	
 	States
