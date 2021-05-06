@@ -1,2 +1,1 @@
-TANKA="Voxels/tank_bottom.kvx"
-TANKB="Voxels/tank_top.kvx"
+TANKV="Voxels/tankfull.kvx"

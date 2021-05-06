@@ -1,0 +1,5 @@
+material texture models/pal1.png {
+	shader "shaders/simsun.fp"
+	specularlevel 0.3
+	glossiness 10
+}

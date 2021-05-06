@@ -66,6 +66,66 @@ class VehMath abstract
 		return result;
 	}
 	
+	play static void AlignToPlane(Actor a, double pitchAdjust = 0, bool ceiling = false, double adjustSpeed = 2)
+	{
+		//Original code by ZZYZX & Nash Muhandes
+		if (!a) return;
+		double ceilingAdjust = 0;
+		Vector3 fnormal;
+		if (!ceiling)
+		{
+			fnormal = a.CurSector.FloorPlane.Normal;
+		}
+		else
+		{
+			fnormal = a.CurSector.CeilingPlane.Normal;
+			ceilingAdjust = 180.0;
+		}
+		Vector2 fnormalp1 = (fnormal.x != 0 || fnormal.y != 0) ? (fnormal.x, fnormal.y).Unit() : (0, 0);
+		Vector2 fnormalp2 = ((fnormal.x, fnormal.y).Length(), fnormal.z);
+		double dang = a.Angle;
+		double fang = atan2(fnormalp1.y, fnormalp1.x);
+		double fpitch = atan2(fnormalp2.x, fnormalp2.y);
+		double ddiff1 = sin(fang - (dang - pitchAdjust));
+		double ddiff2 = cos(fang - dang);
+		
+		double pitchTarget = (fpitch * ddiff2 - pitchAdjust) + ceilingAdjust;
+		double rollTarget = -fpitch * ddiff1 + ceilingAdjust;
+		double angleTarget = dang + ceilingAdjust;
+		
+		if(adjustSpeed == 0)
+		{
+			adjustSpeed = 180;
+		}
+		
+		if(a.Pitch < pitchTarget)
+		{
+			a.A_SetPitch(Clamp(a.pitch + adjustSpeed, a.pitch, pitchTarget));
+		}
+		else if(a.Pitch > pitchTarget)
+		{
+			a.A_SetPitch(Clamp(a.pitch - adjustSpeed, pitchTarget, a.pitch));
+		}
+		
+		if(a.Roll < rollTarget)
+		{
+			a.A_SetRoll(Clamp(a.roll + adjustSpeed, a.roll, rollTarget));
+		}
+		else if(a.Roll > rollTarget)
+		{
+			a.A_SetRoll(Clamp(a.roll - adjustSpeed, rollTarget, a.roll));
+		}
+
+		if(a.Angle < angleTarget)
+		{
+			a.A_SetAngle(Clamp(a.angle + adjustSpeed, a.angle, angleTarget));
+		}
+		else if(a.Angle > angleTarget)
+		{
+			a.A_SetAngle(Clamp(a.angle - adjustSpeed, angleTarget, a.angle));
+		}
+	}
+	
 	// Spawn helpers
 	play static Actor FireProjectile(class<Actor> proj, vector3 pos, double angle, double pitch, double leftright, double forwardback, double updown, double distance, double speed)
 	{

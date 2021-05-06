@@ -1,10 +1,35 @@
+Model VoxelTankBarrel
+{
+	Path "models"
+	Model 0 "tank_barrel.obj"
+	Scale 10.0 10.0 10.0
+	SurfaceSkin 0 0  "pal1.png"
+	USEACTORPITCH
+	USEACTORROLL
+	
+   FrameIndex TANK A 0 0
+} 
+
 Model VoxelTankGun
 {
 	Path "models"
 	Model 0 "tank_top.obj"
 	Scale 10.0 10.0 10.0
+	SurfaceSkin 0 0  "pal1.png"
 	USEACTORPITCH
-	SurfaceSkin 0 0  "metal.png"
+	USEACTORROLL
 	
-   FrameIndex TANK C 0 0
+   FrameIndex TANK A 0 0
+} 
+
+Model VoxelTank
+{
+	Path "models"
+	Model 0 "tank_bottom.obj"
+	Scale 10.0 10.0 10.0
+	SurfaceSkin 0 0  "pal1.png"
+	USEACTORPITCH
+	USEACTORROLL
+	
+   FrameIndex TANK A 0 0
 } 

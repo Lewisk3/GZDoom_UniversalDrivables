@@ -1,9 +1,87 @@
-class VoxelTankGun : VehPart
+class VoxelTankBarrel : VehPart
 {
-	uint cooldown;
+	uint cooldown_primary;
+	uint cooldown_secondary;
 	Default
 	{
 		Scale 3.0;
+	}
+	
+	override void UpdatePos(bool moving)
+	{
+		if(!base) return;
+		let tank = VoxelTank(base);
+		if(!tank) return;
+		SetOrigin(GetOffsetPos(tank.gun), moving);
+		
+		// Angle and Roll
+		angle = tank.gun.angle;
+		roll = tank.gun.roll;
+		
+		// Pitch
+		double pitchoffs = 0;
+		if(tank.driver) pitchoffs = -tank.driver.pitch;
+		double npitch = VehMath.Lerp(pitch, pitchoffs + tank.gun.pitch, 0.25);
+		A_SetPitch(npitch, SPF_INTERPOLATE);
+		pitch = clamp(pitch, -10, 30);
+		
+	}
+	
+	override void DoUpdate()
+	{
+		if(cooldown_primary) 
+		{
+			base.camfx.SetZoom(1.0, 0.1);
+			cooldown_primary--;
+		}
+		if(cooldown_secondary) cooldown_secondary--;
+		
+
+		if( CheckButtons(BT_ATTACK, VehButtons.BTS_DOWN) && !cooldown_primary )
+		{
+			VehMath.FireProjectile("Rocket", pos, angle + 180, -pitch, 0, 70, 0, 2, 16);
+			A_StartSound("Tank/fire", CHAN_BODY, CHANF_OVERLAP);
+			cooldown_primary = 35;
+			base.camfx.SetZoom(0.96, 0.1);
+			base.camfx.Quake(0,4.0,0,0.3);
+			anim_posoffs.x = 30;
+			pitch += 5;
+		}
+		
+		/* if( CheckButtons(BT_ALTATTACK, VehButtons.BTS_DOWN) && !cooldown_secondary )
+		{
+			double rmax = 1.5;
+			double arecoil = frandom(-rmax, rmax);
+			double precoil = frandom(-rmax, rmax);
+			VehMath.FireProjectile("HaloRifle_Bullet", pos, angle + 180 + arecoil, -pitch + precoil, 20, 40, 6, 1, 200);
+			A_StartSound("Halo/Weapons/Rifle/Fire", CHAN_BODY, CHANF_OVERLAP);
+			cooldown_secondary = 4;
+			base.camfx.Quake(2,2,0,0.5);
+		}
+		*/
+		
+	}
+	
+	States
+	{
+		Spawn:
+			TANK A 1;
+		loop;
+	}
+}
+
+class VoxelTankGun : VehPart
+{
+	VehPart aimpart;
+	Default
+	{
+		Scale 3.0;
+	}
+	
+	override void OnAttach()
+	{
+		vector3 reloffs = (-10,0,12);
+		aimpart = VehPart.Attach("VoxelTankBarrel", base, reloffs);
 	}
 
 	override void UpdatePos(bool moving)
@@ -11,33 +89,16 @@ class VoxelTankGun : VehPart
 		super.UpdatePos(moving);
 		let driver = base.driver;
 		if(!driver) return;
-		
-		double turnspd = 0.035;
-		
-		double nangle = VehMath.LerpAngle(angle, driver.angle + 180, turnspd);
-		double npitch = VehMath.Lerp(pitch, -driver.pitch, turnspd);
-		
-		A_SetAngle(nangle, SPF_INTERPOLATE);
-		A_SetPitch(npitch, SPF_INTERPOLATE);
-		pitch = clamp(pitch, -10, 20);
-	}
 
-	override void DoUpdate(PlayerPawn driver, UserCmd cmds)
-	{
-		uint btns = cmds.buttons;
-		if(cooldown) cooldown--;
-		
-		if( (btns & BT_ATTACK) && !cooldown )
-		{
-			VehMath.FireProjectile("Rocket", pos, angle - 180, -pitch, 0, 70, 3, 2, 16);
-			cooldown = 35;
-		}
+		double nangle = VehMath.LerpAngle(angle, driver.angle + 180, 0.035);
+		A_SetAngle(nangle, SPF_INTERPOLATE);
+		VehMath.AlignToPlane(self);
 	}
 	
 	States
 	{
 		Spawn:
-			TANK C 1;
+			TANK A 1;
 		loop;
 	}
 }
@@ -48,11 +109,12 @@ class TankCamera : VehCamera
 	{
 		if(!base) return;
 		let tank = VoxelTank(base);
-		vector3 finalpos = GetOffsetPos(tank.gun);
+		vector3 finalpos = GetOffsetPos(tank.gun, relposoffs);
 		SetOrigin(finalpos, moving);
 		
 		A_SetAngle(base.driver.angle, SPF_INTERPOLATE);
-		A_SetPitch(base.driver.pitch, SPF_INTERPOLATE);
+		A_SetPitch(base.driver.pitch - base.pitch, SPF_INTERPOLATE);
+		A_SetRoll(base.roll, SPF_INTERPOLATE);
 	}
 	
 }
@@ -60,6 +122,7 @@ class TankCamera : VehCamera
 class VoxelTank : VehBase
 {
 	VehPart gun;
+	double turnvel;
 	double throttle;
 	
 	Default
@@ -71,60 +134,58 @@ class VoxelTank : VehBase
 		+INTERPOLATEANGLES;
 	}
 		
-		
 	override void BeginPlay()
 	{
 		super.BeginPlay();
-		gun = VehPart.Attach("VoxelTankGun", self, (0,0,60), (0,0));
+		gun = VehPart.Attach("VoxelTankGun", self, (0,0,50), (0,0));
 	}
 	
 	override void TakeDriver()
 	{
-		SetupCamera((-20,60,25), (-90,0), "TankCamera");
-		if(gun) 
-			driver.angle = gun.angle-90;
-		else
-			driver.angle = -90;
-		LockoutWeapons();
+		SetupCamera((-30,-10,20), (0,0), "TankCamera");
+		if(gun) driver.angle = gun.angle + 180;
+		ReadyDriver();
+	}
+	
+	override vector3 GetExitPos()
+	{
+		return ( cos(gun.angle + 90) * 90,
+				 sin(gun.angle + 90) * 90, 0 );
 	}
 
-	override void DoMove(float forwardmove, float sidemove, uint btns, uint obtns)
+	override void DoMove(float forwardmove, float sidemove)
 	{
 		double maxspd = 0.5;
-		double tspd = 0.1;
-		double turnspd = 1.0;
+		double tspd = 0.03;
+		double turnspd = 0.13;
 		double friction = 0.97;
+		double decel = 0.92;
 		
 		if(sidemove || forwardmove)
 		{
-
 			vector2 movedir = (-sidemove, forwardmove).Unit();
-			if(movedir.x < 0) 
-			{
-				angle -= turnspd;
-				driver.angle -= turnspd;
-				gun.angle -= turnspd;
-			}
-			if(movedir.x > 0) 
-			{
-				angle += turnspd;
-				driver.angle += turnspd;
-				gun.angle += turnspd;
-			}
+			if(movedir.x < 0) turnvel -= turnspd;
+			if(movedir.x > 0) turnvel += turnspd;
 			if(movedir.y > 0) throttle += tspd;
 			if(movedir.y < 0) throttle -= tspd;
 			throttle = clamp(throttle, -1.0, 1.0);
 		}
 		else
 		{
-			throttle *= friction*0.8;
+			throttle *= decel;
+			turnvel *= decel;
 		}
 		vector2 addvel = (
-			cos(angle - 90) * maxspd,  
-			sin(angle - 90) * maxspd
+			cos(angle + 180) * maxspd,  
+			sin(angle + 180) * maxspd
 		) * throttle;
 		vel.xy += addvel;
 		vel *= friction;
+		turnvel *= friction;
+		
+		angle += turnvel;
+		driver.angle += turnvel;
+		gun.angle += turnvel;
 	}
 	
 	States
