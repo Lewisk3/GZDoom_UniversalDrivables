@@ -1,0 +1,218 @@
+class Veh_NoWeapon : Weapon
+{
+	VehBase veh;
+	Weapon oldweapon;
+	
+	static void Setup(PlayerPawn to, VehBase onveh)
+	{
+		to.GiveInventoryType("Veh_NoWeapon");
+		let noweap = Veh_NoWeapon(to.FindInventory("Veh_NoWeapon"));
+		if(noweap) 
+		{
+			noweap.oldweapon = to.player.ReadyWeapon;
+			noweap.veh = onveh;
+		}
+	}
+	
+	override void DoEffect()
+	{
+		if(veh.driver != Owner) RemoveWeap();
+		super.DoEffect();
+	}
+	
+	void RemoveWeap()
+	{
+		if(!Owner || !Owner.player) return;
+		Owner.player.WeaponState |= WF_WEAPONSWITCHOK | WF_REFIRESWITCHOK;
+		oldweapon.Use(false);
+		Owner.RemoveInventory(self);
+	}
+
+	States
+	{
+		Select:
+			TNT1 A 1 A_Raise(64);
+		wait;
+		
+		Deselect:
+			TNT1 A 1;
+		goto Ready;
+		
+		Ready:
+			TNT1 A 1 A_WeaponReady();
+		loop;
+		
+		Fire:
+		goto Ready;
+	}
+}
+
+
+class VehPart : Actor
+{
+	VehBase base;
+	vector3 posoffs;
+	vector2 angoffs;
+	
+	Default
+	{
+		+NOINTERACTION;
+		+NOGRAVITY;
+		+INTERPOLATEANGLES;
+	}
+		
+	static VehPart Attach(class<VehPart> partname, VehBase to, vector3 offset = (0,0,0), vector2 angles = (0,0))
+	{
+		vector3 finalpos;
+		finalpos.xy = VehMath.VOffset(to.angle+angles.x, offset.y, offset.x);
+		finalpos.z = offset.z;
+		finalpos = level.vec3offset(to.pos, finalpos);
+		let vpt = VehPart(Spawn(partname, finalpos));
+		
+		if(vpt)
+		{
+			vpt.base = to;
+			vpt.posoffs = offset;
+			vpt.angoffs = angles;
+		}
+		
+		return vpt;
+	}
+	
+	virtual void UpdatePos(bool moving = true)
+	{
+		if(!base) return;
+		vector3 finalpos;
+		finalpos.xy = VehMath.VOffset(base.angle+angoffs.x, posoffs.y, posoffs.x);
+		finalpos.z = posoffs.z;
+		finalpos = level.vec3offset(base.pos, finalpos);
+		SetOrigin(finalpos, moving);
+	}
+	
+	virtual void DoUpdate(PlayerPawn driver, UserCmd cmds) {}
+	
+	override void Tick()
+	{
+		super.Tick();
+		if(!base) Destroy();
+		if(base.driver) DoUpdate(base.driver, base.driver.player.cmd);
+		UpdatePos();
+	}
+		
+	States
+	{
+		Spawn:
+			TNT1 A 1;
+		loop;
+	}
+	
+}
+
+class VehCamera : VehPart 
+{
+	override void UpdatePos(bool moving)
+	{
+		super.UpdatePos(moving);
+		if(!base.driver) return;
+		
+		A_SetAngle(base.driver.angle, SPF_INTERPOLATE);
+		A_SetPitch(base.driver.pitch, SPF_INTERPOLATE);
+	}
+	
+}
+
+class VehBase : Actor
+{
+	PlayerPawn driver;
+	VehCamera viewcam;
+	
+	override bool CanCollideWith(Actor other, bool passive)
+	{
+		if(other == driver) return false;
+		return super.CanCollideWith(other, passive);
+	}
+	
+	override bool Used(Actor user)
+	{
+		if(!driver) 
+		{
+			driver = PlayerPawn(user);
+			if(!driver) return false;
+			TakeDriver();
+		}
+		else
+		{
+			RemoveDriver();
+		}
+		return false;
+	}
+	
+	// Setup 
+	virtual void TakeDriver()
+	{
+		// [[ Setup driver ]] 
+		
+		// Spawn camera
+		SetupCamera();
+		
+		// Disable weapons
+		LockoutWeapons();
+	}
+	
+	virtual void RemoveDriver()
+	{
+		// Reset driver parameters
+		vector3 outpos = (
+			cos(angle) * radius,
+			sin(angle) * radius,
+			0
+		);
+		outpos = level.Vec3offset(outpos, pos);
+		driver.SetOrigin(outpos, true);
+		if(viewcam) driver.player.camera = driver;
+		viewcam.Destroy();
+		
+		driver = null;
+	}
+	
+	virtual void LockoutWeapons()
+	{
+		if(!driver) return;
+		Veh_NoWeapon.Setup(driver, self);
+	}
+	
+	virtual VehCamera SetupCamera(vector3 offset = (0,0,0), vector2 angles = (0,0), class<VehCamera> camtype = "VehCamera", bool setcam = true)
+	{
+		let cam = VehPart.Attach("VehCamera", self, offset, angles);
+		if(cam)
+		{
+			viewcam = VehCamera(cam);
+			if(driver && setcam) driver.player.camera = viewcam;
+		}
+		return viewcam;
+	}
+
+	// Update stuff
+	virtual void UpdateDriver()
+	{
+		vector3 newpos = pos;
+		driver.SetOrigin(newpos, false);
+	}
+	
+	// Move vehichle
+	virtual void DoMove(float forwardmove, float sidemove, uint btns, uint obtns) {}
+	
+	override void Tick()
+	{
+		if(driver)
+		{
+			UpdateDriver();
+			
+			UserCmd cmd = driver.player.cmd;
+			uint btns = cmd.buttons;
+			uint obtns = driver.player.oldbuttons;
+			DoMove(cmd.forwardmove, cmd.sidemove, btns, obtns);
+		}
+		super.Tick();
+	}
+}

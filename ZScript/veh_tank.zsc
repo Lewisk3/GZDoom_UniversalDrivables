@@ -1,0 +1,115 @@
+class VoxelTankGun : VehPart
+{
+	uint cooldown;
+	Default
+	{
+		Scale 3.0;
+		
+	}
+
+	override void UpdatePos(bool moving)
+	{
+		super.UpdatePos(moving);
+		let driver = base.driver;
+		if(!driver) return;
+		
+		double turnspd = 0.05;
+		double nangle = VehMath.Lerp(angle, driver.angle + 180, turnspd);
+		double npitch = VehMath.Lerp(pitch, -driver.pitch, turnspd);
+		
+		A_SetAngle(nangle, SPF_INTERPOLATE);
+		A_SetPitch(npitch, SPF_INTERPOLATE);
+	}
+
+	override void DoUpdate(PlayerPawn driver, UserCmd cmds)
+	{
+		uint btns = cmds.buttons;
+		if(cooldown) cooldown--;
+		
+		if( (btns & BT_ATTACK) && !cooldown )
+		{
+			VehMath.FireProjectile("Rocket", pos, angle - 180, -pitch, 0, 70, 10, 2, 16);
+			cooldown = 35;
+		}
+	}
+	
+	States
+	{
+		Spawn:
+			TANK B 1;
+		loop;
+	}
+}
+
+class VoxelTank : VehBase
+{
+	VehPart gun;
+	double throttle;
+	
+	Default
+	{
+		Radius 84;
+		Height 64;
+		Scale 3.0;
+		+SOLID;
+		+INTERPOLATEANGLES;
+	}
+		
+		
+	override void BeginPlay()
+	{
+		super.BeginPlay();
+		gun = VehPart.Attach("VoxelTankGun", self, (0,0,60), (0,0));
+	}
+	
+	override void TakeDriver()
+	{
+		SetupCamera((0,60,90), (-90,0));
+		driver.angle = -90;
+		LockoutWeapons();
+	}
+
+	override void DoMove(float forwardmove, float sidemove, uint btns, uint obtns)
+	{
+		double maxspd = 0.5;
+		double tspd = 0.1;
+		double turnspd = 1.0;
+		double friction = 0.97;
+		
+		if(sidemove || forwardmove)
+		{
+
+			vector2 movedir = (-sidemove, forwardmove).Unit();
+			if(movedir.x < 0) 
+			{
+				angle -= turnspd;
+				driver.angle -= turnspd;
+			}
+			if(movedir.x > 0) 
+			{
+				angle += turnspd;
+				driver.angle += turnspd;
+			}
+			if(movedir.y > 0) throttle += tspd;
+			if(movedir.y < 0) throttle -= tspd;
+			throttle = clamp(throttle, -1.0, 1.0);
+		}
+		else
+		{
+			throttle *= friction*0.8;
+		}
+		vector2 addvel = (
+			cos(angle - 90) * maxspd,  
+			sin(angle - 90) * maxspd
+		) * throttle;
+		vel.xy += addvel;
+		vel *= friction;
+	}
+	
+	States
+	{
+		Spawn:
+			TANK A 1;
+		loop;
+	}
+}

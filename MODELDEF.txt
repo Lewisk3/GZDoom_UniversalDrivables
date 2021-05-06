@@ -1,0 +1,10 @@
+Model VoxelTankGun
+{
+	Path "models"
+	Model 0 "tank_top.obj"
+	Scale 10.0 10.0 10.0
+	USEACTORPITCH
+	SurfaceSkin 0 0  "metal.png"
+	
+   FrameIndex TANK B 0 0
+} 

@@ -1,0 +1,1 @@
+TANKA="Voxels/tank_bottom.kvx"

@@ -1,0 +1,38 @@
+class VehMath abstract
+{
+	// Offset vector position.
+	static Vector2 VOffset(double fromangle, double forward, double leftright, double distance = 1.)
+	{
+		return ( forward * cos(fromangle) - leftright * sin(fromangle),
+				 leftright * cos(fromangle) + forward * sin(fromangle) )*distance;
+	}
+	
+	// Linear interpolate
+	static double Lerp(double a, double b, double lerpFactor)
+	{
+		double result = (a * (1.f - lerpFactor)) + (b * lerpFactor);
+		return result;
+	}	
+	
+	// Spawn helpers
+	play static Actor FireProjectile(class<Actor> proj, vector3 pos, double angle, double pitch, double leftright, double forwardback, double updown, double distance, double speed)
+	{
+		vector3 finalpos;
+		finalpos.xy = VOffset(angle, forwardback, leftright, distance);
+		finalpos.z = updown;
+		finalpos = level.vec3offset(pos, finalpos);
+		let proj = Actor.Spawn(proj, finalpos);
+		if(proj)
+		{
+			proj.angle = angle;
+			proj.pitch = pitch;
+			double cosp = cos(pitch);
+			proj.vel = (
+				cos(angle) * cosp,
+				sin(angle) * cosp,
+				-sin(pitch)
+			) * speed;
+		}
+		return proj;
+	}
+}
