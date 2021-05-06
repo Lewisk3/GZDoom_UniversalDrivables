@@ -11,6 +11,7 @@ class Veh_NoWeapon : Weapon
 		{
 			noweap.oldweapon = to.player.ReadyWeapon;
 			noweap.veh = onveh;
+			noweap.Use(false);
 		}
 	}
 	
@@ -79,13 +80,19 @@ class VehPart : Actor
 		return vpt;
 	}
 	
+	virtual vector3 GetOffsetPos(Actor from)
+	{
+		vector3 finalpos;
+		finalpos.xy = VehMath.VOffset(from.angle+angoffs.x, posoffs.y, posoffs.x);
+		finalpos.z = posoffs.z;
+		finalpos = level.vec3offset(from.pos, finalpos);
+		return finalpos;
+	}
+	
 	virtual void UpdatePos(bool moving = true)
 	{
 		if(!base) return;
-		vector3 finalpos;
-		finalpos.xy = VehMath.VOffset(base.angle+angoffs.x, posoffs.y, posoffs.x);
-		finalpos.z = posoffs.z;
-		finalpos = level.vec3offset(base.pos, finalpos);
+		vector3 finalpos = GetOffsetPos(base);
 		SetOrigin(finalpos, moving);
 	}
 	
@@ -118,7 +125,6 @@ class VehCamera : VehPart
 		A_SetAngle(base.driver.angle, SPF_INTERPOLATE);
 		A_SetPitch(base.driver.pitch, SPF_INTERPOLATE);
 	}
-	
 }
 
 class VehBase : Actor
@@ -183,7 +189,7 @@ class VehBase : Actor
 	
 	virtual VehCamera SetupCamera(vector3 offset = (0,0,0), vector2 angles = (0,0), class<VehCamera> camtype = "VehCamera", bool setcam = true)
 	{
-		let cam = VehPart.Attach("VehCamera", self, offset, angles);
+		let cam = VehPart.Attach(camtype, self, offset, angles);
 		if(cam)
 		{
 			viewcam = VehCamera(cam);

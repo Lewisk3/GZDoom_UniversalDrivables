@@ -6,5 +6,5 @@ Model VoxelTankGun
 	USEACTORPITCH
 	SurfaceSkin 0 0  "metal.png"
 	
-   FrameIndex TANK B 0 0
+   FrameIndex TANK C 0 0
 } 

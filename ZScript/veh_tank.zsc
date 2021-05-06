@@ -13,8 +13,9 @@ class VoxelTankGun : VehPart
 		let driver = base.driver;
 		if(!driver) return;
 		
-		double turnspd = 0.05;
-		double nangle = VehMath.Lerp(angle, driver.angle + 180, turnspd);
+		double turnspd = 0.035;
+		
+		double nangle = VehMath.LerpAngle(angle, driver.angle + 90, turnspd);
 		double npitch = VehMath.Lerp(pitch, -driver.pitch, turnspd);
 		
 		A_SetAngle(nangle, SPF_INTERPOLATE);
@@ -28,7 +29,7 @@ class VoxelTankGun : VehPart
 		
 		if( (btns & BT_ATTACK) && !cooldown )
 		{
-			VehMath.FireProjectile("Rocket", pos, angle - 180, -pitch, 0, 70, 10, 2, 16);
+			VehMath.FireProjectile("Rocket", pos, angle - 90, pitch, 0, 70, 10, 2, 16);
 			cooldown = 35;
 		}
 	}
@@ -39,6 +40,21 @@ class VoxelTankGun : VehPart
 			TANK B 1;
 		loop;
 	}
+}
+
+class TankCamera : VehCamera
+{
+	override void UpdatePos(bool moving)
+	{
+		if(!base) return;
+		let tank = VoxelTank(base);
+		vector3 finalpos = GetOffsetPos(tank.gun);
+		SetOrigin(finalpos, moving);
+		
+		A_SetAngle(base.driver.angle, SPF_INTERPOLATE);
+		A_SetPitch(base.driver.pitch, SPF_INTERPOLATE);
+	}
+	
 }
 
 class VoxelTank : VehBase
@@ -64,8 +80,11 @@ class VoxelTank : VehBase
 	
 	override void TakeDriver()
 	{
-		SetupCamera((0,60,90), (-90,0));
-		driver.angle = -90;
+		SetupCamera((-20,60,25), (-90,0), "TankCamera");
+		if(gun) 
+			driver.angle = gun.angle-90;
+		else
+			driver.angle = -90;
 		LockoutWeapons();
 	}
 
@@ -84,11 +103,13 @@ class VoxelTank : VehBase
 			{
 				angle -= turnspd;
 				driver.angle -= turnspd;
+				gun.angle -= turnspd;
 			}
 			if(movedir.x > 0) 
 			{
 				angle += turnspd;
 				driver.angle += turnspd;
+				gun.angle += turnspd;
 			}
 			if(movedir.y > 0) throttle += tspd;
 			if(movedir.y < 0) throttle -= tspd;
