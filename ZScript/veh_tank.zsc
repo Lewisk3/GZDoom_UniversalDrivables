@@ -12,6 +12,13 @@ class VoxelTankBarrel : VehPart
 		if(!base) return;
 		let tank = VoxelTank(base);
 		if(!tank) return;
+		
+		if(!tank.gun) 
+		{
+			Destroy();
+			return;
+		}
+		
 		SetOrigin(GetOffsetPos(tank.gun), moving);
 		
 		// Angle and Roll
@@ -39,9 +46,9 @@ class VoxelTankBarrel : VehPart
 
 		if( CheckButtons(BT_ATTACK, VehButtons.BTS_DOWN) && !cooldown_primary )
 		{
+			cooldown_primary = 35;
 			VehMath.FireProjectile("Rocket", pos, angle + 180, -pitch, 0, 70, 0, 2, 16);
 			A_StartSound("Tank/fire", CHAN_BODY, CHANF_OVERLAP);
-			cooldown_primary = 35;
 			cam.SetZoom(0.90, 0.1);
 			AnimatePos(40, 0, 0);
 			AnimateAngles(0, -8);
@@ -49,12 +56,12 @@ class VoxelTankBarrel : VehPart
 		
 		if( CheckButtons(BT_ALTATTACK, VehButtons.BTS_DOWN) && !cooldown_secondary )
 		{
+			cooldown_secondary = 4;
 			double rmax = 1.5;
 			double arecoil = frandom(-rmax, rmax);
 			double precoil = frandom(-rmax, rmax);
 			VehMath.FireProjectile("HaloRifle_Bullet", pos, angle + 180 + arecoil, -pitch + precoil, 20, 40, 6, 1, 200);
 			A_StartSound("Halo/Weapons/Rifle/Fire", CHAN_BODY, CHANF_OVERLAP);
-			cooldown_secondary = 4;
 			cam.Quake(2,2,0,0.5);
 		}
 	}
@@ -89,7 +96,6 @@ class VoxelTankGun : VehPart
 
 		double nangle = VehMath.LerpAngle(angle, driver.angle + 180, 0.035);
 		A_SetAngle(nangle, SPF_INTERPOLATE);
-		VehMath.AlignToPlane(self);
 	}
 	
 	States
@@ -140,8 +146,13 @@ class VoxelTank : VehBase
 	override void TakeDriver()
 	{
 		SetupCamera((-30,-10,20), (0,0), "TankCamera");
-		if(gun) driver.angle = gun.angle + 180;
+		driver.angle = gun.angle + 180;
 		ReadyDriver();
+	}
+	
+	override vector3 GetDrivePos()
+	{
+		return (0,0,35);
 	}
 	
 	override vector3 GetExitPos()
@@ -151,14 +162,15 @@ class VoxelTank : VehBase
 	}
 
 	override void DoMove(float forwardmove, float sidemove)
-	{
+	{	
+		bool onground = ((pos.z <= floorz) || bOnMobj || bMBFBouncer);
 		double maxspd = 0.5;
 		double tspd = 0.03;
 		double turnspd = 0.13;
 		double friction = 0.97;
 		double decel = 0.92;
 		
-		if(sidemove || forwardmove)
+		if( (sidemove || forwardmove) && onground )
 		{
 			vector2 movedir = (-sidemove, forwardmove).Unit();
 			if(movedir.x < 0) turnvel -= turnspd;
@@ -177,12 +189,12 @@ class VoxelTank : VehBase
 			sin(angle + 180) * maxspd
 		) * throttle;
 		vel.xy += addvel;
-		vel *= friction;
+		if(onground) vel *= friction;
 		turnvel *= friction;
 		
 		angle += turnvel;
 		driver.angle += turnvel;
-		gun.angle += turnvel;
+		if(gun) gun.angle += turnvel;
 	}
 	
 	States

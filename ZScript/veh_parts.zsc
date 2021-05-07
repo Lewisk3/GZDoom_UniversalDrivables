@@ -64,6 +64,7 @@ class VehPart : Actor
 		+NOINTERACTION;
 		+NOGRAVITY;
 		+INTERPOLATEANGLES;
+		+SLIDESONWALLS;
 	}
 		
 	// Core
@@ -133,6 +134,9 @@ class VehPart : Actor
 		anim_angoffs *= anim_spd;
 		anim_posoffs *= anim_spd;
 		UpdatePos();
+		
+		if(base.vehflags & base.bALIGNTOPLANE)
+			VehMath.AlignToPlane(self);
 	}
 		
 	States
@@ -167,6 +171,7 @@ class VehBase : Actor
 	Default
 	{
 		+VehBase.ALIGNTOPLANE;
+		+SLIDESONWALLS;
 	}
 		
 	// Driver Interaction 
@@ -175,6 +180,11 @@ class VehBase : Actor
 		// Spawn camera and setup Driver
 		SetupCamera();
 		ReadyDriver();
+	}
+	
+	virtual vector3 GetDrivePos()
+	{
+		return (0,0,0);
 	}
 	
 	virtual vector3 GetExitPos()
@@ -193,6 +203,10 @@ class VehBase : Actor
 		if(viewcam) driver.player.camera = driver;
 		viewcam.Destroy();
 		
+		// Reset flags
+		driver.bSOLID = driver.default.bSOLID;
+		driver.bNOGRAVITY = driver.default.bNOGRAVITY;
+		
 		// Invalidate driver
 		driver = null;
 	}
@@ -202,6 +216,8 @@ class VehBase : Actor
 		if(!driver) return;
 		if(!viewcam) console.printf("Warning: No camera attached to vehicle!");
 		Veh_NoWeapon.Setup(driver, self);
+		driver.bSOLID = false;
+		driver.bNOGRAVITY = true;
 	}
 	
     bool CheckButtons(int btn, int bstate)
@@ -243,8 +259,12 @@ class VehBase : Actor
 	// Update stuff
 	virtual void UpdateDriver()
 	{
-		vector3 newpos = pos;
-		driver.SetOrigin(newpos, false);
+		vector3 newpos = GetDrivePos();
+		vector3 finalpos = VehMath.V3Offset(angle, pitch, newpos.x, newpos.y, newpos.z, 1.);
+		finalpos = level.vec3offset(pos, finalpos);
+		driver.SetOrigin(finalpos, false);
+		driver.vel *= 0;
+		driver.player.vel *= 0;
 	}
 	
 	// Move vehichle
@@ -284,7 +304,6 @@ class VehBase : Actor
 		
 		if(vehflags & bALIGNTOPLANE)
 			VehMath.AlignToPlane(self);
-		
 		super.Tick();
 	}
 }
