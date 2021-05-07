@@ -128,14 +128,35 @@ class VoxelTank : VehBase
 	VehPart gun;
 	double turnvel;
 	double throttle;
+	double veharmor;
+	
+	Property Armored : veharmor;
 	
 	Default
 	{
+		Health 1000;
 		Radius 84;
 		Height 64;
 		Scale 3.0;
+		VoxelTank.Armored 500;
 		+SOLID;
 		+INTERPOLATEANGLES;
+		+SHOOTABLE;
+	}
+	
+	override int DamageMobj(Actor inflictor, Actor source, int damage, Name mod, int flags, double angle)
+	{
+		int diff = veharmor-damage;
+		if(diff > 0)
+		{
+			veharmor -= damage;
+			return 0;
+		}
+		else
+		{
+			veharmor = 0;
+			return super.DamageMobJ(inflictor, source, damage, mod, flags, angle);
+		}
 	}
 		
 	override void BeginPlay()
@@ -145,8 +166,10 @@ class VoxelTank : VehBase
 		gun.angle += 180;
 	}
 	
-	override void TakeDriver()
+	override void TakeDriver(PlayerPawn user)
 	{
+		if(health <= 0) return;
+		if(user) driver = user;
 		SetupCamera((30,10,20), (0,0), "TankCamera");
 		driver.angle = gun.angle;
 		ReadyDriver();
@@ -165,6 +188,13 @@ class VoxelTank : VehBase
 
 	override void DoMove(float forwardmove, float sidemove)
 	{	
+		if(health <= 0)  
+		{
+			if(driver) RemoveDriver();
+			if(gun) gun.Destroy();
+			return;
+		}
+	
 		bool onground = ((pos.z <= floorz) || bOnMobj || bMBFBouncer);
 		double maxspd = 0.5;
 		double tspd = 0.10;
@@ -205,5 +235,9 @@ class VoxelTank : VehBase
 		Spawn:
 			TANK A 1;
 		loop;
+		
+		Death:
+			TANK A -1;
+		stop;
 	}
 }

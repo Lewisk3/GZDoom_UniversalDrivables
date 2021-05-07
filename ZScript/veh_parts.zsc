@@ -21,7 +21,7 @@ class Veh_NoWeapon : Inventory
 	
 	override void DoEffect()
 	{
-		if(veh.driver != Owner) 
+		if(!veh || veh.driver != Owner) 
 		{
 			Disable();
 		}
@@ -128,7 +128,11 @@ class VehPart : Actor
 	override void Tick()
 	{
 		super.Tick();
-		if(!base) Destroy();
+		if(!base) 
+		{
+			Destroy();
+			return;
+		}
 		if(base.driver) DoUpdate(base.viewcam);
 		if(!anim_spd) anim_spd = 0.97; 
 		anim_angoffs *= anim_spd;
@@ -175,9 +179,10 @@ class VehBase : Actor
 	}
 		
 	// Driver Interaction 
-	virtual void TakeDriver()
+	virtual void TakeDriver(PlayerPawn user)
 	{
 		// Spawn camera and setup Driver
+		if(user) driver = user;
 		SetupCamera();
 		ReadyDriver();
 	}
@@ -206,6 +211,7 @@ class VehBase : Actor
 		// Reset flags
 		driver.bSOLID = driver.default.bSOLID;
 		driver.bNOGRAVITY = driver.default.bNOGRAVITY;
+		driver.bSHOOTABLE = driver.default.bSHOOTABLE;
 		
 		// Invalidate driver
 		driver = null;
@@ -218,6 +224,7 @@ class VehBase : Actor
 		Veh_NoWeapon.Setup(driver, self);
 		driver.bSOLID = false;
 		driver.bNOGRAVITY = true;
+		driver.bSHOOTABLE = false;
 	}
 	
     bool CheckButtons(int btn, int bstate)
@@ -281,9 +288,8 @@ class VehBase : Actor
 	{
 		if(!driver) 
 		{
-			driver = PlayerPawn(user);
+			TakeDriver(PlayerPawn(user));
 			if(!driver) return false;
-			TakeDriver();
 		}
 		else
 		{
