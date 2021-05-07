@@ -2,7 +2,7 @@ Model VoxelTankBarrel
 {
 	Path "models"
 	Model 0 "tank_barrel.obj"
-	Scale 10.0 10.0 10.0
+	Scale -10.0 10.0 10.0
 	SurfaceSkin 0 0  "pal1.png"
 	USEACTORPITCH
 	USEACTORROLL
@@ -14,7 +14,7 @@ Model VoxelTankGun
 {
 	Path "models"
 	Model 0 "tank_top.obj"
-	Scale 10.0 10.0 10.0
+	Scale -10.0 10.0 10.0
 	SurfaceSkin 0 0  "pal1.png"
 	USEACTORPITCH
 	USEACTORROLL

@@ -18,7 +18,6 @@ class VoxelTankBarrel : VehPart
 			Destroy();
 			return;
 		}
-		
 		SetOrigin(GetOffsetPos(tank.gun), moving);
 		
 		// Angle and Roll
@@ -27,15 +26,16 @@ class VoxelTankBarrel : VehPart
 		
 		// Pitch
 		double pitchoffs = 0;
-		if(tank.driver) pitchoffs = -tank.driver.pitch;
+		if(tank.driver) pitchoffs = tank.driver.pitch;
 		double npitch = VehMath.Lerp(pitch, pitchoffs + tank.gun.pitch, 0.25);
 		A_SetPitch(npitch, SPF_INTERPOLATE);
-		pitch = clamp(pitch, -10, 30);
+		pitch = clamp(pitch, -30, 10);
 		
 	}
 	
 	override void DoUpdate(VehCamera cam)
 	{
+		let tank = VoxelTank(base);
 		if(cooldown_primary) 
 		{
 			cam.SetZoom(1.0, 0.1);
@@ -43,26 +43,27 @@ class VoxelTankBarrel : VehPart
 		}
 		if(cooldown_secondary) cooldown_secondary--;
 		
-
 		if( CheckButtons(BT_ATTACK, VehButtons.BTS_DOWN) && !cooldown_primary )
 		{
 			cooldown_primary = 35;
-			VehMath.FireProjectile("Rocket", pos, angle + 180, -pitch, 0, 70, 0, 2, 16);
+			let boolet = GetReplacement("Rocket");
+			VehMath.FireProjectile(boolet, pos, angle, pitch, 0, 70, -4, 2, 16);
 			A_StartSound("Tank/fire", CHAN_BODY, CHANF_OVERLAP);
 			cam.SetZoom(0.90, 0.1);
-			AnimatePos(40, 0, 0);
-			AnimateAngles(0, -8);
+			AnimatePos(-40, 0, 0);
+			tank.throttle -= (abs(cos(tank.angle-angle)) * 0.5);
+			// AnimateAngles(0, -8);
 		}
 		
 		if( CheckButtons(BT_ALTATTACK, VehButtons.BTS_DOWN) && !cooldown_secondary )
 		{
-			cooldown_secondary = 4;
+			cooldown_secondary = 2;
 			double rmax = 1.5;
 			double arecoil = frandom(-rmax, rmax);
 			double precoil = frandom(-rmax, rmax);
-			VehMath.FireProjectile("HaloRifle_Bullet", pos, angle + 180 + arecoil, -pitch + precoil, 20, 40, 6, 1, 200);
+			VehMath.FireProjectile("HaloMagnum_Bullet", pos, angle + arecoil, pitch + precoil, 20, 40, 6, 1, 200);
 			A_StartSound("Halo/Weapons/Rifle/Fire", CHAN_BODY, CHANF_OVERLAP);
-			cam.Quake(2,2,0,0.5);
+			cam.Quake(1.25,1.25,0,0.5);
 		}
 	}
 	
@@ -84,7 +85,7 @@ class VoxelTankGun : VehPart
 	
 	override void OnAttach()
 	{
-		vector3 reloffs = (-10,0,12);
+		vector3 reloffs = (32,0,12);
 		aimpart = VehPart.Attach("VoxelTankBarrel", base, reloffs);
 	}
 
@@ -94,7 +95,7 @@ class VoxelTankGun : VehPart
 		let driver = base.driver;
 		if(!driver) return;
 
-		double nangle = VehMath.LerpAngle(angle, driver.angle + 180, 0.035);
+		double nangle = VehMath.LerpAngle(angle, driver.angle, 0.035);
 		A_SetAngle(nangle, SPF_INTERPOLATE);
 	}
 	
@@ -141,12 +142,13 @@ class VoxelTank : VehBase
 	{
 		super.BeginPlay();
 		gun = VehPart.Attach("VoxelTankGun", self, (0,0,50), (0,0));
+		gun.angle += 180;
 	}
 	
 	override void TakeDriver()
 	{
-		SetupCamera((-30,-10,20), (0,0), "TankCamera");
-		driver.angle = gun.angle + 180;
+		SetupCamera((30,10,20), (0,0), "TankCamera");
+		driver.angle = gun.angle;
 		ReadyDriver();
 	}
 	
@@ -165,10 +167,10 @@ class VoxelTank : VehBase
 	{	
 		bool onground = ((pos.z <= floorz) || bOnMobj || bMBFBouncer);
 		double maxspd = 0.5;
-		double tspd = 0.03;
+		double tspd = 0.10;
 		double turnspd = 0.13;
 		double friction = 0.97;
-		double decel = 0.92;
+		double decel = 0.97;
 		
 		if( (sidemove || forwardmove) && onground )
 		{
@@ -189,12 +191,13 @@ class VoxelTank : VehBase
 			sin(angle + 180) * maxspd
 		) * throttle;
 		vel.xy += addvel;
+		
 		if(onground) vel *= friction;
 		turnvel *= friction;
 		
 		angle += turnvel;
-		driver.angle += turnvel;
-		if(gun) gun.angle += turnvel;
+		gun.angle += turnvel;
+		if(driver) driver.angle += turnvel;
 	}
 	
 	States

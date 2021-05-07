@@ -301,6 +301,10 @@ class VehBase : Actor
 			UserCmd cmd = driver.player.cmd;
 			DoMove(cmd.forwardmove, cmd.sidemove);
 		}
+		else
+		{
+			DoMove(0,0);
+		}
 		
 		if(vehflags & bALIGNTOPLANE)
 			VehMath.AlignToPlane(self);
